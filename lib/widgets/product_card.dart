@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mtl_jewellery/providers/cart_provider.dart';
 
+import '../screens/products_details_screen.dart';
+
 class ProductCard extends StatelessWidget {
   final dynamic product;
   final double imageHeight;
@@ -16,6 +18,15 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _buildFull(context);
 
+  void _openDetail(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(product: product),
+      ),
+    );
+  }
+
   // ── Full card ──────────────────────────────────────────────────────────────
   Widget _buildFull(BuildContext context) {
     return Container(
@@ -29,11 +40,13 @@ class ProductCard extends StatelessWidget {
           LayoutBuilder(builder: (_, constraints) {
             final imgH =
             imageHeight > 0 ? imageHeight : constraints.maxWidth * 1.1;
-            return Stack(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  height: imgH,
+            return GestureDetector(
+                onTap: () => _openDetail(context),
+                child: Stack(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: imgH,
                   width: double.infinity,
                   color: const Color(0xFFF3F3F3),
                   child: _safeImage(
@@ -111,7 +124,7 @@ class ProductCard extends StatelessWidget {
                   right: 6,
                   child: _CartOverlay(product: product),
                 ),
-            ]);
+                ]));
           }),
 
           const SizedBox(height: 8),

@@ -11,8 +11,13 @@ import 'signup_screen.dart';
 /// a "Sign Up" link for new email users, and Skip.
 ///
 /// NOTE: there is no backend yet. Replace the TODOs with your real API calls.
+// class LoginScreen extends StatefulWidget {
+//   const LoginScreen({super.key});
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// true when opened from the cart: close with a result after login
+  /// instead of going to the home screen.
+  final bool returnResult;
+  const LoginScreen({super.key, this.returnResult = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -41,7 +46,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
+  // void _skip() {
+  //   // Guest mode: nothing is saved, so the login page shows again next launch.
+  //   Navigator.pushReplacementNamed(context, '/home');
+  // }
   void _skip() {
+    if (widget.returnResult) {
+      Navigator.pop(context, false); // back to the cart as a guest
+      return;
+    }
     // Guest mode: nothing is saved, so the login page shows again next launch.
     Navigator.pushReplacementNamed(context, '/home');
   }
@@ -67,15 +80,29 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
 
-    Navigator.push(
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (_) => OtpScreen(
+  //         purpose: OtpPurpose.mobileLogin,
+  //         target: mobile,
+  //       ),
+  //     ),
+  //   );
+  // }
+    final ok = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => OtpScreen(
           purpose: OtpPurpose.mobileLogin,
           target: mobile,
+          returnResult: widget.returnResult,
         ),
       ),
     );
+    if (ok == true && widget.returnResult && mounted) {
+      Navigator.pop(context, true);
+    }
   }
 
   Future<void> _submitEmail() async {
@@ -90,9 +117,15 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       await RegisterApi.saveToken(result.token);
-      await saveSession(result.userId, name: result.name);
+      await saveSession(result.userId,
+          name: result.name, contact: result.email);
+
 
       if (!mounted) return;
+      if (widget.returnResult) {
+        Navigator.pop(context, true);
+        return;
+      }
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } on RegisterApiException catch (e) {
       if (!mounted) return;
@@ -102,11 +135,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _openSignup() {
-    Navigator.push(
+  Future<void> _openSignup() async {
+    final ok = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const SignupScreen()),
+      MaterialPageRoute(
+        builder: (_) => SignupScreen(returnResult: widget.returnResult),
+      ),
     );
+    if (ok == true && widget.returnResult && mounted) {
+      Navigator.pop(context, true);
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

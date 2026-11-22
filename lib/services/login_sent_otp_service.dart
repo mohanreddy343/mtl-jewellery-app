@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
+
 /// Error with a message that is safe to show to the user.
 class ApiException implements Exception {
   final String message;
@@ -16,9 +18,9 @@ class ApiException implements Exception {
 class ApiService {
   // Physical phone: your laptop's IPv4 from `ipconfig` (same Wi-Fi).
   // Android emulator: use http://10.0.2.2:3000 instead.
-  static const String baseUrl = 'http://10.229.212.1:3000';
+  static const String baseUrl = ApiConfig.baseUrl;
 
-  static const _timeout = Duration(seconds: 15);
+  static const _timeout = ApiConfig.timeout;
 
   static Future<Map<String, dynamic>> _post(
       String path,

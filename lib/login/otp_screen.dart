@@ -10,13 +10,16 @@ import '../services/otp_api_service.dart';
 enum OtpPurpose { mobileLogin, emailSignup }
 
 /// Saves the logged-in session locally. Used by login + OTP screens.
-Future<void> saveSession(String userId, {String? name}) async {
+Future<void> saveSession(String userId, {String? name, String? contact}) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('logged_in', true);
     await prefs.setString('user_id', userId);
     if (name != null && name.isNotEmpty) {
       await prefs.setString('user_name', name);
+    }
+    if (contact != null && contact.isNotEmpty) {
+      await prefs.setString('user_contact', contact);
     }
   } catch (_) {}
 }
@@ -31,13 +34,25 @@ class OtpScreen extends StatefulWidget {
   final String target;
 
   /// Only for signup – name entered on the signup form.
+  // final String? name;
+  //
+  // const OtpScreen({
+  //   super.key,
+  //   required this.purpose,
+  //   required this.target,
+  //   this.name,
+  // });
   final String? name;
+
+  /// true when opened from the cart: close with `true` after verifying.
+  final bool returnResult;
 
   const OtpScreen({
     super.key,
     required this.purpose,
     required this.target,
     this.name,
+    this.returnResult = false,
   });
 
   @override
@@ -90,6 +105,16 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   // ── Actions ────────────────────────────────────────────────────────────────
+  // Future<void> _verify() async {
+  //   if (_loading) return;
+  void _done() {
+    if (widget.returnResult) {
+      Navigator.pop(context, true);
+    } else {
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    }
+  }
+
   Future<void> _verify() async {
     if (_loading) return;
     if (_otp.text.length != _length) {
@@ -105,9 +130,13 @@ class _OtpScreenState extends State<OtpScreen> {
     // Email signup is not connected to the backend yet, so it keeps the demo flow.
     if (_isEmail) {
       await Future.delayed(const Duration(milliseconds: 700));
+      // await saveSession(widget.target, name: widget.name);
+      // if (!mounted) return;
+      // Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      // return;
       await saveSession(widget.target, name: widget.name);
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      _done();
       return;
     }
 
@@ -115,10 +144,12 @@ class _OtpScreenState extends State<OtpScreen> {
     try {
       final result = await OtpApi.verify(widget.target, _otp.text);
       await OtpApi.saveToken(result.token);
-      await saveSession(result.userId, name: result.name);
+
+      await saveSession(result.userId,
+          name: result.name, contact: widget.target);
 
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      _done();
     } on OtpApiException catch (e) {
       if (!mounted) return;
       setState(() {

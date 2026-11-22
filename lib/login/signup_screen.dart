@@ -5,8 +5,11 @@ import 'otp_screen.dart';
 
 /// Create-account page for email users. After the form is valid we "send" an
 /// OTP to the email and open the shared OTP screen to verify it.
+// class SignupScreen extends StatefulWidget {
+//   const SignupScreen({super.key});
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final bool returnResult;
+  const SignupScreen({super.key, this.returnResult = false});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -47,9 +50,14 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       await RegisterApi.saveToken(result.token);
-      await saveSession(result.userId, name: result.name);
+      await saveSession(result.userId,
+          name: result.name, contact: result.email);
 
       if (!mounted) return;
+      if (widget.returnResult) {
+        Navigator.pop(context, true);
+        return;
+      }
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } on RegisterApiException catch (e) {
       if (!mounted) return;

@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'api_config.dart';
+
 /// Error with a message that is safe to show to the user.
 class RegisterApiException implements Exception {
   final String message;
@@ -32,8 +34,8 @@ class RegisterResult {
 class RegisterApi {
   // USB tunnel (adb reverse): http://localhost:3000
   // Wi-Fi: your laptop's IPv4 from `ipconfig`, e.g. http://10.122.245.1:3000
-  static const String baseUrl = 'http://localhost:3000';
-  static const _timeout = Duration(seconds: 15);
+  static const String baseUrl = ApiConfig.baseUrl;
+  static const _timeout = ApiConfig.timeout;
 
   /// Calls POST /auth/register
   static Future<RegisterResult> register({

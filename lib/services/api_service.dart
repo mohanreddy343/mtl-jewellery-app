@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../model/product_model.dart';
+import 'api_config.dart';
 
 class ApiService {
   // Android emulator: http://10.0.2.2:3000
   // Chrome / iOS simulator: http://localhost:3000
   // Real phone: http://YOUR-LAPTOP-IP:3000
-  static const String baseUrl = "http://localhost:3000";
+  static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<List<Product>> getProducts({String? category}) async {
     final uri = Uri.parse("$baseUrl/products").replace(

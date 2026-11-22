@@ -6,7 +6,7 @@ import 'package:mtl_jewellery/screens/trending_screen.dart';
 import 'package:mtl_jewellery/widgets/bottom_nav_bar.dart';
 import 'package:mtl_jewellery/providers/cart_provider.dart';
 
-import 'login/login_sscreen.dart';
+import 'login/login_screen.dart';
 import 'login/splash_screen.dart';
 
 Future<void> main() async {

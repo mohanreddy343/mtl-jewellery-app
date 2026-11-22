@@ -8,6 +8,7 @@ import 'package:mtl_jewellery/screens/payment_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../saved_addresses_screen.dart';
+import '../services/address_api_service.dart';
 
 /// Kuwait delivery address form.
 /// Kuwait addresses are written as: Governorate > Area > Block > Street >
@@ -489,9 +490,8 @@ class _AddressScreenState extends State<AddressScreen> {
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     String v(TextEditingController c) => c.text.trim();
 
     final address = <String, String>{
@@ -510,6 +510,10 @@ class _AddressScreenState extends State<AddressScreen> {
       'notes': v(_notes),
     };
 
+    // Save to "Saved Addresses" (server if logged in, phone if guest)
+    await _saveToSavedAddresses();
+    if (!mounted) return;
+
     // Payment screen shows the order success page after "Place Order",
     // and "Continue Shopping" takes the user to the home page.
     Navigator.of(context, rootNavigator: true).push(
@@ -524,6 +528,65 @@ class _AddressScreenState extends State<AddressScreen> {
         ),
       ),
     );
+  }
+  // ── Save to Saved Addresses ────────────────────────────────────────────────
+  Future<void> _saveToSavedAddresses() async {
+    String v(TextEditingController c) => c.text.trim();
+
+    final draft = SavedAddress(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      label: _label,
+      name: v(_name),
+      phone: v(_phone), // 8 digits, same as the Saved Addresses screen
+      governorate: _governorate ?? '',
+      area: _area ?? '',
+      block: v(_block),
+      street: v(_street),
+      building: v(_building),
+      floor: v(_floor),
+      flat: v(_flat),
+      landmark: v(_notes),
+    );
+
+    try {
+      // Read the current local list
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(kSavedAddressesKey) ?? [];
+      final list = <SavedAddress>[];
+      for (final s in raw) {
+        try {
+          list.add(
+              SavedAddress.fromJson(jsonDecode(s) as Map<String, dynamic>));
+        } catch (_) {}
+      }
+
+      // Already saved? Then do nothing (e.g. user picked a saved card)
+      final exists = list.any((a) =>
+      a.phone == draft.phone &&
+          a.governorate == draft.governorate &&
+          a.area == draft.area &&
+          a.block == draft.block &&
+          a.street == draft.street &&
+          a.building == draft.building &&
+          a.floor == draft.floor &&
+          a.flat == draft.flat);
+      if (exists) return;
+
+      var toSave = draft;
+      if (await AddressApi.isLoggedIn()) {
+        final saved = await AddressApi.add(draft.toJson());
+        toSave = SavedAddress.fromJson(saved); // carries the server id
+      }
+
+      list.add(toSave);
+      await prefs.setStringList(
+        kSavedAddressesKey,
+        list.map((a) => jsonEncode(a.toJson())).toList(),
+      );
+      if (mounted) setState(() => _saved = list);
+    } on AddressApiException catch (e) {
+      _toast(e.message); // saving failed, but checkout continues
+    } catch (_) {}
   }
 
   // ── UI helpers ─────────────────────────────────────────────────────────────

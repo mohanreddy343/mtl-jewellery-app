@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mtl_jewellery/providers/cart_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../login/login_screen.dart';
+import '../services/order_api_service.dart';
 import 'address_screen.dart';
 
 class CartScreen extends StatelessWidget {
@@ -8,6 +13,34 @@ class CartScreen extends StatelessWidget {
   const CartScreen({super.key, this.onStartShopping});
 
   static const _pink = Color(0xFFFF9800);
+
+  /// Logged in = a saved token that has not expired yet.
+  Future<bool> _isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null || token.isEmpty) return false;
+
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+
+      final exp = payload['exp'];
+      if (exp is int &&
+          DateTime.now().isAfter(
+              DateTime.fromMillisecondsSinceEpoch(exp * 1000))) {
+        await prefs.remove('auth_token');
+        await prefs.setBool('logged_in', false);
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +248,21 @@ class CartScreen extends StatelessWidget {
             SizedBox(
               height: 46,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  // Guest? Ask them to log in first, then continue to the address.
+                  if (!await _isLoggedIn()) {
+                    if (!context.mounted) return;
+                    final loggedIn =
+                    await Navigator.of(context, rootNavigator: true)
+                        .push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => const LoginScreen(returnResult: true),
+                      ),
+                    );
+                    if (loggedIn != true) return; // skipped or backed out
+                  }
+                  if (!context.mounted) return;
+
                   // Snapshot of the cart, so the success page still shows the
                   // products after the cart is cleared.
                   final orderItems = cart.items.map((i) {
@@ -233,6 +280,12 @@ class CartScreen extends StatelessWidget {
                     };
                   }).toList();
                   final orderTotal = cart.totalPrice;
+                  final cartLines = cart.items
+                      .map((i) => <String, dynamic>{
+                    'productId': i.product.id,
+                    'qty': i.qty,
+                  })
+                      .toList();
 
                   Navigator.of(context, rootNavigator: true).push(
                     MaterialPageRoute(
@@ -240,7 +293,11 @@ class CartScreen extends StatelessWidget {
                         items: orderItems,
                         total: orderTotal,
                         onPlaceOrder: (address, method) async {
-                          // Save the order to your backend here if needed.
+                          await OrderApi.placeOrder(
+                            items: cartLines,
+                            address: Map<String, dynamic>.from(address),
+                            paymentMethod: method,
+                          );
                           cart.clear();
                         },
                       ),

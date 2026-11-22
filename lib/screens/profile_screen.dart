@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../login/login_sscreen.dart';
+import '../login/login_screen.dart';
 import '../saved_addresses_screen.dart';
+import '../services/admin_api_service.dart';
+import 'admin_home_screen.dart';
+import 'orders_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,7 +20,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _loggedIn = false;
   String _userId = '';
+  String _contact = '';
   int _addressCount = 0;
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -31,8 +36,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _loggedIn = prefs.getBool('logged_in') ?? false;
       _userId = prefs.getString('user_id') ?? '';
+      _contact = prefs.getString('user_contact') ?? '';
       _addressCount = prefs.getStringList(kSavedAddressesKey)?.length ?? 0;
     });
+
+    // Ask the server whether this account is an admin. The token alone decides:
+    // it does not depend on the 'logged_in' flag.
+    final admin = await AdminApi.isAdmin();
+    if (!mounted) return;
+    setState(() => _isAdmin = admin);
   }
 
   void _goToLogin() {
@@ -66,6 +78,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('logged_in');
     await prefs.remove('user_id');
+    await prefs.remove('user_contact');
+    await prefs.remove('auth_token'); // so the old session cannot be reused
 
     if (!mounted) return;
     _goToLogin();
@@ -91,9 +105,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            if (_loggedIn && _userId.isNotEmpty)
+            if (_loggedIn && _contact.isNotEmpty)
               Text(
-                _userId,
+                _contact,
                 style: const TextStyle(
                   color: _subtitleColor,
                   fontSize: 13,
@@ -147,8 +161,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: Icons.person_outline,
                   title: 'Profile',
                   onTap: () {},
-                  showDivider: false,
+                  showDivider: _isAdmin,
                 ),
+                if (_isAdmin)
+                  _tile(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: 'Admin access',
+                    subtitle: 'Manage orders, products and categories',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AdminHomeScreen()),
+                    ),
+                    showDivider: false,
+                  ),
                 const SizedBox(height: 20),
                 _sectionTitle('OTHER INFORMATION'),
                 _tile(
@@ -200,7 +226,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: IntrinsicHeight(
         child: Row(
           children: [
-            _topAction(Icons.shopping_bag_outlined, 'Orders', () {}),
+            _topAction(Icons.shopping_bag_outlined, 'Orders', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              );
+            }),
             _verticalDivider(),
             _topAction(Icons.favorite_border, 'Wishlist', () {}),
             _verticalDivider(),

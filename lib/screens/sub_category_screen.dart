@@ -98,15 +98,38 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                         ),
                       ),
                     ),
-                    child: Text(
-                      s.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight:
-                        selected ? FontWeight.bold : FontWeight.w500,
-                        color: selected ? Colors.black : Colors.black54,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            color: const Color(0xFFF3F3F3),
+                            child: s.imageUrl.isNotEmpty
+                                ? Image.network(s.imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey,
+                                    size: 22))
+                                : const Icon(Icons.category_outlined,
+                                color: Colors.grey, size: 22),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          s.name,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                            selected ? FontWeight.bold : FontWeight.w500,
+                            color: selected ? Colors.black : Colors.black54,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );

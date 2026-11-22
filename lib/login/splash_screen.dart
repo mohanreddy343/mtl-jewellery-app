@@ -579,10 +579,14 @@
 
 import 'dart:async';
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
+
+import '../services/splash_video_service.dart';
 
 /// Full-screen video splash. Plays assets/videos/splash.mp4 once, then opens
 /// '/home' if the user is already logged in, otherwise '/login'.
@@ -597,7 +601,7 @@ class _SplashScreenState extends State<SplashScreen> {
   static const _videoPath = 'assets/videos/splash.mp4';
   static const _volume = 1.0; // set to 0.0 for a silent splash
 
-  late final VideoPlayerController _video;
+  late VideoPlayerController _video;
   Timer? _failsafe;
   bool _navigated = false;
 
@@ -610,8 +614,24 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
+    // Check the server for a newer video (it plays on the next launch)
+    SplashVideoService.refresh();
+
+    // Prefer the video downloaded from the backend
+    final File? cached = await SplashVideoService.cachedFile();
+    if (cached != null) {
+      final remote = VideoPlayerController.file(cached);
+      try {
+        await remote.initialize();
+        await _video.dispose();
+        _video = remote;
+      } catch (_) {
+        await remote.dispose(); // bad file: keep the bundled video
+      }
+    }
+
     try {
-      await _video.initialize();
+      if (!_video.value.isInitialized) await _video.initialize();
       await _video.setVolume(_volume);
       await _video.setLooping(false);
       _video.addListener(_onVideoTick);
